@@ -44,6 +44,11 @@ contract Escrow is Ownable {
             revert OnlyBuyer();
         _;
     }
+    modifier onlySeller(uint _orderId) {
+        if (msg.sender != agrements[_orderId].buyer)
+            revert OnlyBuyer();
+        _;
+    }
 
     mapping(uint => Payment) public agrements;
     IERC20 public currency;
@@ -75,7 +80,7 @@ contract Escrow is Ownable {
         require(_payment.status!=PaymentStatus.Unknown, "Agreement does not exist");
         if (currency.transfer(_payment.buyer,_payment.value)){
             _payment.status =  PaymentStatus.Deposit;
-            emit PaymentAgreed(_orderId, _payment);
+            emit PaymentDeposit(_orderId, _payment);
         }else{
             emit PaymentFail(_orderId, _payment);
             revert FailedPayment();
@@ -85,8 +90,8 @@ contract Escrow is Ownable {
     function goodsReceived(uint _orderId) external onlyBuyer(_orderId){
         Payment storage _payment = agrements[_orderId];
         require(_payment.status == PaymentStatus.GoodsReceived);
-        completePayment(_orderId, _payment);
         emit PaymentGoodsReceived(_orderId, _payment);
+        completePayment(_orderId, _payment);
     }
 
     function completePayment(uint _orderId, Payment storage _payment) private {
