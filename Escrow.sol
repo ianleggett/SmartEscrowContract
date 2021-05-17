@@ -59,7 +59,7 @@ contract Escrow is Ownable {
 
     function createPayment(uint _orderId, address payable _buyer, address payable _seller, uint _value, uint16 _fee, uint32 _expiry) external onlyOwner {
         Payment storage _payment = agrements[_orderId];
-        require(_payment.status!=PaymentStatus.Unknown, "Agreement already exists");
+        require(_payment.status==PaymentStatus.Unknown, "Agreement already exists");
         agrements[_orderId] = Payment(_buyer, _seller, _value, /*addtl gas*/0, _fee, _expiry, PaymentStatus.Created, false);
         emit PaymentCreation(_orderId, _buyer, _value);
     }
