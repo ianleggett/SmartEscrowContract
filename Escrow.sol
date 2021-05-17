@@ -46,7 +46,7 @@ contract Escrow is Ownable {
     }
     modifier onlySeller(uint _orderId) {
         if (msg.sender != agrements[_orderId].buyer)
-            revert OnlyBuyer();
+            revert OnlySeller();
         _;
     }
 
