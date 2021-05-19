@@ -1,9 +1,12 @@
 # SmartEscrowContract
 Creating a benchmark contract for Escrow payments
 
+
+
 ## Example System start up & restart
-```mermaid
-sequenceDiagram 
+
+```mermaid 
+sequenceDiagram
 participant C as End user 
 participant W as Webserver 
 participant B as Business System 
