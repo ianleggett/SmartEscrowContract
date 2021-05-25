@@ -10,6 +10,7 @@ contract Escrow is Ownable {
     event PaymentAgreed(uint indexed orderId,Payment payment);
     event PaymentDeposit(uint indexed orderId,Payment payment);
     event PaymentFail(uint indexed orderId,Payment payment);
+    event PaymentGoodsSent(uint indexed orderId,Payment payment);
     event PaymentGoodsReceived(uint indexed orderId,Payment payment);
     event PaymentComplete(uint indexed orderId, Payment payment);
 
@@ -31,7 +32,7 @@ contract Escrow is Ownable {
         address payable seller;
         uint256 value;
         uint128 additionalGasFees;
-        uint16 fee;
+        uint256 fee;
         uint32 expiry;
         PaymentStatus status;
         bool refundApproved;
@@ -56,13 +57,18 @@ contract Escrow is Ownable {
         return currency.balanceOf(address(this));
     }
 
+    function getValue(uint _orderId) public view returns (uint){
+        Payment storage _payment = agrements[_orderId];
+        return _payment.value;
+    }
+
     function getAllowance(uint _orderId) public view returns (uint256){
         Payment storage _payment = agrements[_orderId];
         return currency.allowance(_payment.buyer,address(this));
     }
 
     function getVersion() public pure returns (string memory){
-        return "Escrow V1.05";
+        return "Escrow V1.07";
     }
 
     mapping(uint => Payment) public agrements;
@@ -70,12 +76,13 @@ contract Escrow is Ownable {
 
     constructor(IERC20 _currency) Ownable() {
         currency = _currency;
+        feesAvailable = 0;
     }
 
-    function createPayment(uint _orderId, address payable _buyer, address payable _seller, uint _value, uint16 _fee, uint32 _expiry) external onlyOwner {
+    function createPayment(uint _orderId, address payable _buyer, address payable _seller, uint _value, uint _fee, uint32 _expiry) external onlyOwner {
         Payment storage _payment = agrements[_orderId];
         require(_payment.status==PaymentStatus.Unknown, "Agreement already exists");
-        agrements[_orderId] = Payment(_buyer, _seller, _value, /*addtl gas*/0, _fee, _expiry, PaymentStatus.Created, false);
+        agrements[_orderId] = Payment(_buyer, _seller, _value, /*gas*/0, _fee, _expiry, PaymentStatus.Created, false);
         emit PaymentCreation(_orderId, _buyer, _value);
     }
 /**
@@ -109,7 +116,7 @@ contract Escrow is Ownable {
         Payment storage _payment = agrements[_orderId];
         require(_payment.status == PaymentStatus.Deposit,"Need to deposit funds first !!");
         _payment.status = PaymentStatus.GoodsSent;
-        emit PaymentGoodsReceived(_orderId, _payment);
+        emit PaymentGoodsSent(_orderId, _payment);
     }
 
     function goodsReceived(uint _orderId) external onlyBuyer(_orderId){
@@ -126,7 +133,7 @@ contract Escrow is Ownable {
         Payment storage _payment = agrements[_orderId];
         require(msg.sender == owner(),"Only Owner can release funds ");
         require( _payment.status == PaymentStatus.GoodsReceived,"Goods have not been received");
-        uint256 _totalFees = _payment.fee; // + _payment.additionalGasFees;
+        uint256 _totalFees = _payment.fee  + _payment.additionalGasFees;
         feesAvailable += _totalFees;
         currency.transfer(_payment.seller, _payment.value - _totalFees);
         _payment.status = PaymentStatus.Completed;
