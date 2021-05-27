@@ -97,7 +97,7 @@ contract Escrow is Ownable {
     /**
        Fund transferred in from Buyer
     **/
-    function deposit(uint _orderId) external payable onlyBuyer(_orderId) {
+    function deposit(uint _orderId) external onlyBuyer(_orderId) {
         Payment storage _payment = agrements[_orderId];
         require(_payment.status!=PaymentStatus.Unknown, "Agreement does not exist");
         // buyer must approve the value amount beforehand in Dapp
@@ -129,7 +129,7 @@ contract Escrow is Ownable {
     }
 
      /// release funds to the seller
-    function paySeller(uint _orderId) external payable {
+    function paySeller(uint _orderId) external {
         Payment storage _payment = agrements[_orderId];
         require(msg.sender == owner(),"Only Owner can release funds ");
         require( _payment.status == PaymentStatus.GoodsReceived,"Goods have not been received");
