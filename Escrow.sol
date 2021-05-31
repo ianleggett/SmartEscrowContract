@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: Apache 2.0
 pragma solidity ^0.8.0;
 
-import "./../../openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./../../openzeppelin-contracts/contracts/access/Ownable.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.1.0/contracts/token/ERC20/utils/SafeERC20.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.1.0/contracts/token/ERC20/ERC20.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.1.0/contracts/access/Ownable.sol";
 
 contract Escrow is Ownable {
 
+   // using SafeERC20 for IERC20;
+    using SafeERC20 for ERC20;
+    
     event PaymentCreation(uint indexed orderId, address indexed buyer, uint value);
     event PaymentAgreed(uint indexed orderId,Payment payment);
     event PaymentDeposit(uint indexed orderId,Payment payment);
@@ -21,12 +25,20 @@ contract Escrow is Ownable {
     /// Only the seller can call this function.
     //error OnlySeller();
     /// The function cannot be called at the current state.
-    error InvalidState();
+    //error InvalidState();
 
-    error FailedPayment(string);
-
+    //error FailedPayment(string);
+    
     uint256 public feesAvailable;  // summation of fees that can be withdrawn
+    
+    mapping(uint => Payment) public agrements;
+    ERC20 immutable private tokenccy;
 
+    constructor(ERC20 _currency) Ownable() {
+        tokenccy = _currency;
+        feesAvailable = 0;
+    }
+    
     struct Payment {
         address payable buyer;
         address payable seller;
@@ -49,34 +61,31 @@ contract Escrow is Ownable {
     }
 
     function getState(uint _orderId) public view returns (PaymentStatus){
-        Payment storage _payment = agrements[_orderId];
+        Payment memory _payment = agrements[_orderId];
         return _payment.status;
     }
 
     function getContractBalance() public view returns (uint256){
-        return currency.balanceOf(address(this));
+        return tokenccy.balanceOf(address(this));
     }
 
-    function getValue(uint _orderId) public view returns (uint){
-        Payment storage _payment = agrements[_orderId];
+    function getValue(uint _orderId) public view returns (uint256){
+        Payment memory _payment = agrements[_orderId];
         return _payment.value;
     }
-
+    
+    function getFee(uint _orderId) public view returns (uint256){
+        Payment memory _payment = agrements[_orderId];
+        return _payment.fee;
+    }
+    
     function getAllowance(uint _orderId) public view returns (uint256){
-        Payment storage _payment = agrements[_orderId];
-        return currency.allowance(_payment.buyer,address(this));
+        Payment memory _payment = agrements[_orderId];
+        return tokenccy.allowance(_payment.buyer,address(this));
     }
 
     function getVersion() public pure returns (string memory){
-        return "Escrow V1.07";
-    }
-
-    mapping(uint => Payment) public agrements;
-    IERC20 public currency;
-
-    constructor(IERC20 _currency) Ownable() {
-        currency = _currency;
-        feesAvailable = 0;
+        return "Escrow V1.192";
     }
 
     function createPayment(uint _orderId, address payable _buyer, address payable _seller, uint _value, uint _fee, uint32 _expiry) external onlyOwner {
@@ -86,7 +95,7 @@ contract Escrow is Ownable {
         emit PaymentCreation(_orderId, _buyer, _value);
     }
 /**
-    Buyer agrees and deposits the amount of funds agreed
+    Buyer agrees and then approves funds transfer the amount of funds agreed
 **/
     function agreePurchase(uint _orderId) external onlyBuyer(_orderId) {
         Payment storage _payment = agrements[_orderId];
@@ -102,14 +111,11 @@ contract Escrow is Ownable {
         require(_payment.status!=PaymentStatus.Unknown, "Agreement does not exist");
         // buyer must approve the value amount beforehand in Dapp
         // how much has the buyer allowed us to get
-        require(currency.allowance(_payment.buyer,address(this)) >= _payment.value,"Buyer needs to approve funds to Escrow first !!");
-        if (currency.transferFrom(_payment.buyer,payable(address(this)),_payment.value)){
-            _payment.status =  PaymentStatus.Deposit;
-            emit PaymentDeposit(_orderId, _payment);
-        }else{
-            emit PaymentFail(_orderId, _payment);
-            revert FailedPayment("Failed");
-        }
+        require( tokenccy.allowance( _payment.buyer, address(this)) >= (_payment.value + _payment.fee),"Buyer needs to approve funds to Escrow first !!");
+        tokenccy.safeTransferFrom(  _payment.buyer, address(this) , (_payment.value + _payment.fee) );
+       // require(msg.value >= getValue(_orderId), "The amount and the value sent to deposit do not match");
+        _payment.status =  PaymentStatus.Deposit;
+        emit PaymentDeposit(_orderId, _payment);
     }
 
     function goodsSent(uint _orderId) external onlySeller(_orderId){
@@ -124,7 +130,7 @@ contract Escrow is Ownable {
         require(_payment.status == PaymentStatus.GoodsSent,"Goods have not been sent");
         _payment.status = PaymentStatus.GoodsReceived;
         // here we tell the curreny that the seller can ONLY have 'value' funds.
-        require(currency.approve(_payment.seller,_payment.value),"Can not approve sellers funds !!");
+        tokenccy.safeApprove(_payment.seller,_payment.value);//,"Can not approve sellers funds !!");
         emit PaymentGoodsReceived(_orderId, _payment);
     }
 
@@ -135,7 +141,7 @@ contract Escrow is Ownable {
         require( _payment.status == PaymentStatus.GoodsReceived,"Goods have not been received");
         uint256 _totalFees = _payment.fee  + _payment.additionalGasFees;
         feesAvailable += _totalFees;
-        currency.transfer(_payment.seller, _payment.value - _totalFees);
+        tokenccy.safeTransfer( _payment.seller, _payment.value );
         _payment.status = PaymentStatus.Completed;
         emit PaymentComplete(_orderId, _payment);
     }
@@ -144,7 +150,7 @@ contract Escrow is Ownable {
         // This check also prevents underflow
         require(_amount <= feesAvailable, "Amount is higher than amount available");
         feesAvailable -= _amount;
-        payable(_to).transfer(_amount);
+        tokenccy.safeTransfer( _to, _amount );
     }
 
     /// TO DO: Implement this, remove 'pure' and require() to stop compiler warnings
@@ -171,3 +177,4 @@ contract Escrow is Ownable {
     }
 
 }
+
