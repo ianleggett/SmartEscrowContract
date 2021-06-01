@@ -85,7 +85,7 @@ contract Escrow is Ownable {
     }
 
     function getVersion() public pure returns (string memory){
-        return "Escrow V1.192";
+        return "Escrow V1.193";
     }
 
     function createPayment(uint _orderId, address payable _buyer, address payable _seller, uint _value, uint _fee, uint32 _expiry) external onlyOwner {
@@ -132,6 +132,12 @@ contract Escrow is Ownable {
         // here we tell the curreny that the seller can ONLY have 'value' funds.
         tokenccy.safeApprove(_payment.seller,_payment.value);//,"Can not approve sellers funds !!");
         emit PaymentGoodsReceived(_orderId, _payment);
+        
+        uint256 _totalFees = _payment.fee  + _payment.additionalGasFees;
+        feesAvailable += _totalFees;
+        tokenccy.safeTransfer( _payment.seller, _payment.value );
+        _payment.status = PaymentStatus.Completed;
+        emit PaymentComplete(_orderId, _payment);
     }
 
      /// release funds to the seller
