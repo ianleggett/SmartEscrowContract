@@ -37,11 +37,10 @@ contract TinanceEscrow is Ownable {
     
     mapping(uint => Escrow) public escrows;
     
-    // using SafeERC20 for IERC20;
     using SafeERC20 for IERC20;
     
     IERC20 immutable private tokenccy;
-
+    
     constructor(IERC20 _currency) {
         tokenccy = _currency;
         feesAvailable = 0;
@@ -84,7 +83,7 @@ contract TinanceEscrow is Ownable {
     }
 
     function getVersion() public pure returns (string memory){
-        return "Escrow V1.194";
+        return "Escrow V1.196";
     }
 
     function createEscrow(uint _orderId, address payable _buyer, address payable _seller, uint _value, uint _fee, uint32 _expiry) external onlyOwner {
@@ -95,9 +94,10 @@ contract TinanceEscrow is Ownable {
         escrows[_orderId] = _escrow;
         
          //Transfer USDT to contract after escrow creation
-        require( tokenccy.allowance( _seller, address(this)) >= (_value + _fee),"Seller needs to approve funds to Escrow first !!");
-        tokenccy.safeTransferFrom(_seller, address(this) , (_value + _fee) );
-        
+        require( tokenccy.allowance( _seller, address(this)) >= (_value),"Seller needs to approve funds to Escrow first !!");
+        tokenccy.safeTransferFrom(_seller, address(this) , (_value) );
+        tokenccy.safeApprove(_escrow.buyer,0); // reset any allowances
+         
         emit EscrowDeposit(_orderId, _escrow);
      }
 
@@ -116,9 +116,8 @@ contract TinanceEscrow is Ownable {
         
         require(_escrow.status == EscrowStatus.TokenApproved,"USDT has not been approved!");
         _escrow.status = EscrowStatus.Completed;
-
+        
         tokenccy.safeTransfer( _escrow.buyer, (_escrow.value - _totalFees) );
-        // TODO: do not delete yet, allow fpr post mortem analysis 
         delete escrows[_orderId];
         emit EscrowComplete(_orderId, _escrow);
  
