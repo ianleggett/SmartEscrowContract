@@ -32,8 +32,7 @@ contract TinanceEscrow is Ownable {
         uint128 additionalGasFees;
         uint256 sellerfee;
         uint256 buyerfee;
-        EscrowStatus status;       
-        //uint32 expiry;
+        EscrowStatus status;              
     }
     
     mapping(uint => Escrow) public escrows;
@@ -105,10 +104,9 @@ contract TinanceEscrow is Ownable {
         
         //Transfer USDT to contract after escrow creation
         require( tokenccy.allowance( _seller, address(this)) >= (_value),"Seller needs to approve funds to Escrow first !!");
-       
-        Escrow memory _escrow =  Escrow(_buyer, _seller, _value, /*gas*/0, _sellerfee, _buyerfee, EscrowStatus.Unknown);        
         
         tokenccy.safeTransferFrom(_seller, address(this) , (_value) );
+        Escrow memory _escrow =  Escrow(_buyer, _seller, _value, /*gas*/0, _sellerfee, _buyerfee, EscrowStatus.Unknown); 
          _escrow.status = EscrowStatus.Funded;
         escrows[_orderId] = _escrow;
         tokenccy.safeApprove(_escrow.buyer,0); // reset any allowances
@@ -159,19 +157,18 @@ contract TinanceEscrow is Ownable {
         emit EscrowDisputeResovled(_orderId);
      }
 
-    function setArbitration(uint _orderId) external view onlyOwner {
+    function setArbitration(uint _orderId) external onlyOwner {
         Escrow memory _escrow = escrows[_orderId];
         require(_escrow.status == EscrowStatus.Funded,"Can not Arbitrate, USDT has not been deposited");
          _escrow.status = EscrowStatus.Arbitration;
+        escrows[_orderId] = _escrow;
     }
 
      /// release funds to the seller/buyer in case of dispute
     function arbitrationEscrow(uint _orderId, uint8 _buyerPercent) external onlyOwner {
         require( (_buyerPercent >= 0 && _buyerPercent <= 100),"Buyer percent out of range");
         Escrow memory _escrow = escrows[_orderId];
-        require(_escrow.status == EscrowStatus.Funded,"USDT has not been deposited");
-        
-       // require( (_escrow.status == EscrowStatus.Refund) || (_escrow.status == EscrowStatus.Arbitration) ,"Must be in correct state!");
+        require(_escrow.status == EscrowStatus.Arbitration,"Must be in Arbitrate state");
         
         uint256 _totalFees = _escrow.sellerfee  + _escrow.buyerfee + _escrow.additionalGasFees;
         feesAvailable += _totalFees; // arb deduct fees , full refund no fees
