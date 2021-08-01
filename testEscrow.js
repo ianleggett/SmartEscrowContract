@@ -42,8 +42,10 @@ contract("USDTToken", accounts => {
       let balBuy = await usdtInstance.balanceOf.call(buyer);
       await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],10100,1,1,{from: owner});      
       console.log("Created contract "+ORDER_ID+" OK");
-      let val = await escrowInstance.getValue(ORDER_ID); 
-      console.log("Contract val "+val);
+      assert.equal(await escrowInstance.getState(ORDER_ID),1,"Contract should not exist!!");
+      assert.equal(await escrowInstance.getValue(ORDER_ID),10100,"Contract value is wrong");
+      // let val = await escrowInstance.getValue(ORDER_ID); 
+      // console.log("Contract val "+val);
 
       await escrowInstance.releaseEscrow(ORDER_ID,{from: seller});
 
@@ -52,6 +54,29 @@ contract("USDTToken", accounts => {
       console.log("Seller bal "+balSell+" new bal"+newBalSell+" diff:"+(newBalSell-balSell));
       console.log("Buyer bal "+balBuy+" new bal"+newBalBuy+" diff:"+(newBalBuy-balBuy));
     });
+
+    it("Test Fail seller lack of funds", async() => {
+      const ORDER_ID = 8989;
+      let usdtInstance = await usdt.deployed();
+       let escrowInstance = await escrow.deployed();
+       // console.log("Seller approve funds");
+       await usdtInstance.approve(escrowInstance.address,999901,{from: seller});     
+       let balSell = await usdtInstance.balanceOf.call(seller);
+       let balBuy = await usdtInstance.balanceOf.call(buyer);
+       await truffleAssert.reverts( 
+         escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],999900,1,1,{from: owner}),
+         "ERC20: transfer amount exceeds balance"
+       ); 
+
+       assert.equal(await escrowInstance.getState(ORDER_ID),0,"Contract should not exist!!");
+ 
+       //await escrowInstance.releaseEscrow(ORDER_ID,{from: seller});
+ 
+       let newBalSell = await usdtInstance.balanceOf.call(seller);
+       let newBalBuy = await usdtInstance.balanceOf.call(buyer);
+       console.log("Seller bal "+balSell+" new bal"+newBalSell+" diff:"+(newBalSell-balSell));
+       console.log("Buyer bal "+balBuy+" new bal"+newBalBuy+" diff:"+(newBalBuy-balBuy));
+     });
 
     it("Test Refund Escrow ", async() => {
       const ORDER_ID = 5555;
@@ -99,7 +124,10 @@ contract("USDTToken", accounts => {
      await escrowInstance.setArbitration(ORDER_ID,{from: owner});
      // try to release but fail!!
     // escrowInstance.releaseEscrow(ORDER_ID,{from: seller});
-     await truffleAssert.reverts( escrowInstance.releaseEscrow(ORDER_ID,{from: seller}) , "USDT has not been deposited");     
+     await truffleAssert.reverts( 
+       escrowInstance.releaseEscrow(ORDER_ID,{from: seller}) ,
+        "USDT has not been deposited"
+       );     
 
      await escrowInstance.arbitrationEscrow(ORDER_ID,buyerPct,{from: owner});
 
