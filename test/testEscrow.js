@@ -33,17 +33,20 @@ contract("USDTToken", accounts => {
    )
 
     it("Test Happy path Escrow ", async() => {
-     const ORDER_ID = 1234;
-     let usdtInstance = await usdt.deployed();
+      const ORDER_ID = 1234;
+      const CTR_VAL  = 1322;
+      const SELL_FEE = 21;
+      const BUY_FEE  = 31;
+      let usdtInstance = await usdt.deployed();
       let escrowInstance = await escrow.deployed();
       // console.log("Seller approve funds");
-      await usdtInstance.approve(escrowInstance.address,10100,{from: seller});     
+      await usdtInstance.approve(escrowInstance.address,CTR_VAL + SELL_FEE,{from: seller});     
       let balSell = await usdtInstance.balanceOf.call(seller);
       let balBuy = await usdtInstance.balanceOf.call(buyer);
-      await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],10100,1,1,{from: owner});      
+      await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL,SELL_FEE,BUY_FEE,{from: owner});      
       console.log("Created contract "+ORDER_ID+" OK");
       assert.equal(await escrowInstance.getState(ORDER_ID),1,"Contract should not exist!!");
-      assert.equal(await escrowInstance.getValue(ORDER_ID),10100,"Contract value is wrong");
+      assert.equal(await escrowInstance.getValue(ORDER_ID),CTR_VAL,"Contract value is wrong");
       // let val = await escrowInstance.getValue(ORDER_ID); 
       // console.log("Contract val "+val);
 
@@ -53,6 +56,8 @@ contract("USDTToken", accounts => {
       let newBalBuy = await usdtInstance.balanceOf.call(buyer);
       console.log("Seller bal "+balSell+" new bal"+newBalSell+" diff:"+(newBalSell-balSell));
       console.log("Buyer bal "+balBuy+" new bal"+newBalBuy+" diff:"+(newBalBuy-balBuy));
+      assert.equal(newBalSell-balSell,-(CTR_VAL + SELL_FEE),"Should have taken funds!!");
+      assert.equal(newBalBuy-balBuy,CTR_VAL- BUY_FEE,"Should have Added funds!!");
     });
 
     it("Test Fail seller lack of funds", async() => {
@@ -80,16 +85,18 @@ contract("USDTToken", accounts => {
 
     it("Test Refund Escrow ", async() => {
       const ORDER_ID = 5555;
+      const CTR_VAL  = 2312;
+      const SELL_FEE = 23;
+      const BUY_FEE  = 54;
       let usdtInstance = await usdt.deployed();
       let escrowInstance = await escrow.deployed();
       // console.log("Seller approve funds");
-      await usdtInstance.approve(escrowInstance.address,10100,{from: seller}); 
+      await usdtInstance.approve(escrowInstance.address,CTR_VAL+SELL_FEE,{from: seller}); 
       let balSell = await usdtInstance.balanceOf.call(seller);
       let balBuy = await usdtInstance.balanceOf.call(buyer);
-      await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],10100,1,1,{from: owner});      
-      console.log("Created contract "+ORDER_ID+" OK");
-      let val = await escrowInstance.getValue(ORDER_ID); 
-      console.log("Contract val "+val);
+      await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL,SELL_FEE,BUY_FEE,{from: owner});      
+      assert.equal(await escrowInstance.getState(ORDER_ID),1,"Contract should exist!!");
+      assert.equal(await escrowInstance.getValue(ORDER_ID),CTR_VAL,"Contract value is wrong");
 
       // excrow is CANCELLED HERE
 
@@ -103,18 +110,23 @@ contract("USDTToken", accounts => {
       let newBalBuy = await usdtInstance.balanceOf.call(buyer);
       console.log("Seller bal "+balSell+" new bal"+newBalSell+" diff:"+(newBalSell-balSell));
       console.log("Buyer bal "+balBuy+" new bal"+newBalBuy+" diff:"+(newBalBuy-balBuy));
+      assert.equal(newBalSell-balSell,0);
+      assert.equal(newBalBuy-balBuy,0);
     });
 
     it("Test Arbitration Escrow ", async() => {
      const ORDER_ID = 8877;
      const buyerPct = 10;
+     const CTR_VAL  = 1345;
+     const SELL_FEE = 12;
+     const BUY_FEE  = 34;
      let usdtInstance = await usdt.deployed();
      let escrowInstance = await escrow.deployed();
      // console.log("Seller approve funds");
-     await usdtInstance.approve(escrowInstance.address,22200,{from: seller}); 
+     await usdtInstance.approve(escrowInstance.address,CTR_VAL+SELL_FEE,{from: seller}); 
      let balSell = await usdtInstance.balanceOf.call(seller);
      let balBuy = await usdtInstance.balanceOf.call(buyer);
-     await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],22200,2,2,{from: owner});      
+     await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL,SELL_FEE,BUY_FEE,{from: owner});      
      console.log("Created contract "+ORDER_ID+" OK");
      let val = await escrowInstance.getValue(ORDER_ID); 
      console.log("Contract val "+val);
