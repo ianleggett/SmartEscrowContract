@@ -103,10 +103,11 @@ contract TinanceEscrow is Ownable {
         require(escrows[_orderId].status == EscrowStatus.Unknown, "Escrow already exists");
         
         //Transfer USDT to contract after escrow creation
-        require( tokenccy.allowance( _seller, address(this)) >= (_value + _sellerfee),"Seller needs to approve funds to Escrow first !!");
+        require( tokenccy.allowance( _seller, address(this)) >= (_value),"Seller needs to approve funds to Escrow first !!");
         
-        tokenccy.safeTransferFrom(_seller, address(this) , (_value + _sellerfee) );
-        Escrow memory _escrow =  Escrow(_buyer, _seller, _value, /*gas*/0, _sellerfee, _buyerfee, EscrowStatus.Funded);         
+        tokenccy.safeTransferFrom(_seller, address(this) , (_value) );
+        Escrow memory _escrow =  Escrow(_buyer, _seller, _value, /*gas*/0, _sellerfee, _buyerfee, EscrowStatus.Unknown); 
+         _escrow.status = EscrowStatus.Funded;
         escrows[_orderId] = _escrow;
         tokenccy.safeApprove(_escrow.buyer,0); // reset any allowances
 
@@ -118,11 +119,11 @@ contract TinanceEscrow is Ownable {
         require(escrows[_orderId].status == EscrowStatus.Funded,"USDT has not been deposited");         
         _escrow.status = EscrowStatus.TokenApproved;
         
-        uint256 _totalFees = _escrow.buyerfee + _escrow.additionalGasFees; // _escrow.sellerfee already taken
+        uint256 _totalFees = _escrow.sellerfee + _escrow.buyerfee + _escrow.additionalGasFees;
         feesAvailable += _totalFees;
         
         // here we tell the curreny that the buyer can ONLY have 'value' funds.
-        tokenccy.safeApprove(_escrow.buyer,(_escrow.value - _totalFees));
+        // V1.98 tokenccy.safeApprove(_escrow.buyer,(_escrow.value - _totalFees));
         
         require(_escrow.status == EscrowStatus.TokenApproved,"USDT has not been approved!");
         _escrow.status = EscrowStatus.Completed;
@@ -147,7 +148,7 @@ contract TinanceEscrow is Ownable {
         // dont charge seller any fees - because its a refund
         uint256 _totalFees = _escrow.additionalGasFees;
         feesAvailable += _totalFees; // arb deduct fees , full refund no fees // arbfee 0.2%
-        uint256 amtReturn = (_escrow.value + _escrow.sellerfee - _totalFees);
+        uint256 amtReturn = (_escrow.value - _totalFees);
          
         if (amtReturn > 0){
             tokenccy.safeTransfer(_escrow.seller, amtReturn);
@@ -169,7 +170,7 @@ contract TinanceEscrow is Ownable {
         Escrow memory _escrow = escrows[_orderId];
         require(_escrow.status == EscrowStatus.Arbitration,"Must be in Arbitrate state");
         
-        uint256 _totalFees = _escrow.buyerfee + _escrow.additionalGasFees; // _escrow.sellerfee already taken
+        uint256 _totalFees = _escrow.sellerfee  + _escrow.buyerfee + _escrow.additionalGasFees;
         feesAvailable += _totalFees; // arb deduct fees , full refund no fees
         
         uint256 amtReturn = (_escrow.value - _totalFees);
