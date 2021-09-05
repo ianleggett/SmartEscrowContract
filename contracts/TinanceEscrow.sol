@@ -193,27 +193,4 @@ contract TinanceEscrow is Ownable {
         tokenccy.safeTransfer( _to, _amount );
     }
 
-    /// TO DO: Implement this, remove 'pure' and require() to stop compiler warnings
-    // function refund(uint _orderId) pure external {
-    //     require(_orderId!=_orderId,"Not Implemented Yet!!"); // stop compiler warning until we implement
-    //     //Payment storage _payment = agrements[_orderId];
-    //     //refundPayment(_orderId, msg.sender, PaymentStatus.Refunded);
-    // }
-
-    /// TO DO: Implement this, remove 'pure' and require() to stop compiler warnings
-    // function approveRefund(uint _orderId) pure external {
-    //     require(_orderId!=_orderId,"Not Implemented Yet!!"); // stop compiler warning until we implement
-    //     // Payment storage _payment = agrements[_orderId];
-    //     // require(msg.sender == _payment.seller);
-    //     // _payment.refundApproved = true;
-    // }
-
-    function increaseGasCosts(uint _orderId, uint128 _gas) private {
-        escrows[_orderId].additionalGasFees += _gas * uint128(tx.gasprice);
-    }
-
-    function notImplementedYet() pure private {
-        require(1!=2,"Not Implemented Yet!!"); // stop compiler warning until we implement
-    }
-
 }
