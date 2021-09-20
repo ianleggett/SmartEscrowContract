@@ -36,15 +36,6 @@ contract("USDTToken", accounts => {
         }) 
    )
 
-  //  it("Test Escrow Create ", () =>
-  //  usdt.deployed()    
-  //   .then( instance => {
-  //       escrow(instance.address).deployed().then(
-  //           instance2 => console.log("Escrow deployed " + instance2.address)
-  //     )        
-  //    }) 
-  //  )
-
     it("Test Happy path Escrow ", async() => {
       const ORDER_ID = 1234;
       const CTR_VAL  = 1322;
@@ -142,7 +133,14 @@ contract("USDTToken", accounts => {
      await usdtInstance.approve(escrowInstance.address,CTR_VAL+SELL_FEE,{from: seller}); 
      let balSell = await usdtInstance.balanceOf.call(seller);
      let balBuy = await usdtInstance.balanceOf.call(buyer);
-     await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL + SELL_FEE,SELL_FEE,BUY_FEE,{from: owner});      
+     let tx = await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL + SELL_FEE,SELL_FEE,BUY_FEE,{from: owner});  
+     
+     truffleAssert.eventEmitted(tx, 'EscrowDeposit', (ev) => {
+       //console.log(JSON.stringify(ev));
+       //console.log(parseInt(ev.orderId));      
+       return parseInt(ev.orderId) === ORDER_ID;
+     });
+
      console.log("Created contract "+ORDER_ID+" OK");
      let val = await escrowInstance.getValue(ORDER_ID); 
      console.log("Contract val "+val);

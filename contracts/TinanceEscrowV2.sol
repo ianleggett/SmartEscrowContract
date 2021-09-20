@@ -100,19 +100,18 @@ contract TinanceEscrowV2 is Ownable {
         emit EscrowDeposit(_orderId, escrows[_orderId]);
      }
     /* This is called by the sellers wallet */
-    function releaseEscrow(uint _orderId) external onlySeller(_orderId){ 
-        Escrow memory _escrow = escrows[_orderId];     
+    function releaseEscrow(uint _orderId) external onlySeller(_orderId){            
         require(escrows[_orderId].status == EscrowStatus.Funded,"USDT has not been deposited");                
         
-        uint256 _totalFees = _escrow.sellerfee + _escrow.buyerfee;
+        uint256 _totalFees = escrows[_orderId].sellerfee + escrows[_orderId].buyerfee;
         feesAvailable += _totalFees;  // needed for transfer value below
 
         // write as complete, in case transfer fails              
         escrows[_orderId].status = EscrowStatus.Completed;
         
-        tokenccy.safeTransfer( _escrow.buyer, (_escrow.value - _totalFees) );
-        delete escrows[_orderId];
-        emit EscrowComplete(_orderId, _escrow);
+        tokenccy.safeTransfer( escrows[_orderId].buyer, (escrows[_orderId].value - _totalFees) );
+        emit EscrowComplete(_orderId,  escrows[_orderId]);
+        delete escrows[_orderId];        
     }
 
     function approveRefund(uint _orderId) external onlyOwner {        
