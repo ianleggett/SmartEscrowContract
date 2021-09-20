@@ -1,7 +1,11 @@
 
 const usdt = artifacts.require("USDTToken");
-const escrow = artifacts.require("TinanceEscrow");
+const escrow = artifacts.require("TinanceEscrowV2");
 const truffleAssert = require('truffle-assertions');
+
+//enum EscrowStatus { Unknown, Funded, Completed, Refund, Arbitration }
+const STATES = {UNKNOWN:0,FUNDED:1,NOT_USED:2,COMPLETED:3,REFUND:4,ARBITRATION:5}
+//const STATES = {UNKNOWN:0,FUNDED:1,TOKENAPP:2,COMPLETED:3,REFUND:4,ARBITRATION:5}
 
 contract("USDTToken", accounts => {
 
@@ -32,21 +36,32 @@ contract("USDTToken", accounts => {
         }) 
    )
 
+  //  it("Test Escrow Create ", () =>
+  //  usdt.deployed()    
+  //   .then( instance => {
+  //       escrow(instance.address).deployed().then(
+  //           instance2 => console.log("Escrow deployed " + instance2.address)
+  //     )        
+  //    }) 
+  //  )
+
     it("Test Happy path Escrow ", async() => {
       const ORDER_ID = 1234;
       const CTR_VAL  = 1322;
       const SELL_FEE = 21;
       const BUY_FEE  = 31;
       let usdtInstance = await usdt.deployed();
+      console.log("Deployed USDT "+usdtInstance.address+" OK");
       let escrowInstance = await escrow.deployed();
+      console.log("Deployed Escrow "+escrowInstance.address+" OK");
       // console.log("Seller approve funds");
       await usdtInstance.approve(escrowInstance.address,CTR_VAL + SELL_FEE,{from: seller});     
       let balSell = await usdtInstance.balanceOf.call(seller);
       let balBuy = await usdtInstance.balanceOf.call(buyer);
-      await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL,SELL_FEE,BUY_FEE,{from: owner});      
+      await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL + SELL_FEE,SELL_FEE,BUY_FEE,{from: owner}); 
       console.log("Created contract "+ORDER_ID+" OK");
-      assert.equal(await escrowInstance.getState(ORDER_ID),1,"Contract should not exist!!");
-      assert.equal(await escrowInstance.getValue(ORDER_ID),CTR_VAL,"Contract value is wrong");
+      assert.equal(await escrowInstance.getState(ORDER_ID),STATES.FUNDED,"Contract should not exist!!");
+      assert.equal(await escrowInstance.getValue(ORDER_ID),CTR_VAL + SELL_FEE,"Contract value is wrong");
       // let val = await escrowInstance.getValue(ORDER_ID); 
       // console.log("Contract val "+val);
 
@@ -73,7 +88,7 @@ contract("USDTToken", accounts => {
          "ERC20: transfer amount exceeds balance"
        ); 
 
-       assert.equal(await escrowInstance.getState(ORDER_ID),0,"Contract should not exist!!");
+       assert.equal(await escrowInstance.getState(ORDER_ID),STATES.UNKNOWN,"Contract should not exist!!");
  
        //await escrowInstance.releaseEscrow(ORDER_ID,{from: seller});
  
@@ -94,13 +109,14 @@ contract("USDTToken", accounts => {
       await usdtInstance.approve(escrowInstance.address,CTR_VAL+SELL_FEE,{from: seller}); 
       let balSell = await usdtInstance.balanceOf.call(seller);
       let balBuy = await usdtInstance.balanceOf.call(buyer);
-      await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL,SELL_FEE,BUY_FEE,{from: owner});      
-      assert.equal(await escrowInstance.getState(ORDER_ID),1,"Contract should exist!!");
-      assert.equal(await escrowInstance.getValue(ORDER_ID),CTR_VAL,"Contract value is wrong");
+      await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL + SELL_FEE,SELL_FEE,BUY_FEE,{from: owner});      
+      assert.equal(await escrowInstance.getState(ORDER_ID),STATES.FUNDED,"Contract should exist!!");
+      assert.equal(await escrowInstance.getValue(ORDER_ID),CTR_VAL + SELL_FEE,"Contract value is wrong");
 
       // excrow is CANCELLED HERE
 
       await escrowInstance.approveRefund(ORDER_ID,{from: owner});
+      assert.equal(await escrowInstance.getState(ORDER_ID),STATES.REFUND,"Contract should be in refund");
       // try to release but fail!!
       //await escrowInstance.releaseEscrow(ORDER_ID,{from: seller});
 
@@ -126,7 +142,7 @@ contract("USDTToken", accounts => {
      await usdtInstance.approve(escrowInstance.address,CTR_VAL+SELL_FEE,{from: seller}); 
      let balSell = await usdtInstance.balanceOf.call(seller);
      let balBuy = await usdtInstance.balanceOf.call(buyer);
-     await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL,SELL_FEE,BUY_FEE,{from: owner});      
+     await escrowInstance.createEscrow(ORDER_ID,buyer,accounts[1],CTR_VAL + SELL_FEE,SELL_FEE,BUY_FEE,{from: owner});      
      console.log("Created contract "+ORDER_ID+" OK");
      let val = await escrowInstance.getValue(ORDER_ID); 
      console.log("Contract val "+val);

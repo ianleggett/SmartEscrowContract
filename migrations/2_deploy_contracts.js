@@ -1,5 +1,5 @@
 var usdt = artifacts.require("USDTToken");
-var escrow = artifacts.require("TinanceEscrow");
+var escrow = artifacts.require("TinanceEscrowV2");
 
 module.exports = async(deployer, network, accounts) => {
  // deployer.deploy(Ctr);  
